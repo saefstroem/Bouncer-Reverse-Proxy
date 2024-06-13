@@ -1,0 +1,12 @@
+[package]
+name = "bouncer-reverse-proxy"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix-web = { version="4.6.0",features=["openssl"] }
+actix-cors = "0.7.0"
+env_logger = "0.11.3"
+openssl = "0.10.64"
+serde_json = "1.0.117"
+serde = {version="1.0.203",features=["derive"]}
