@@ -4,9 +4,18 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-actix-web = { version="4.6.0",features=["openssl"] }
+actix-web = { version="4.5.1",features=["openssl"] }
 actix-cors = "0.7.0"
 env_logger = "0.11.3"
 openssl = "0.10.64"
 serde_json = "1.0.117"
 serde = {version="1.0.203",features=["derive"]}
+actix = "0.13.5"
+actix-tls = "3.4.0"
+actix-web-actors = "4.3.0"
+actix-http = "3.8.0"
+bytes = "1.6.0"
+futures = "0.3.30"
+awc = "3.5.0"
+portpicker = "0.1.1"
+once_cell = "1.19.0"

@@ -1,14 +1,14 @@
 use actix_cors::Cors;
 use actix_web::{
     get,
-    web::{self, scope, Data},
+    web::scope,
     App, HttpResponse, HttpServer, Responder,
 };
 use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use serde::Deserialize;
-use std::{collections::HashMap, env, fs::File, io::Read};
+use std::env;
 
-mod route;
+mod websockets;
 
 #[get("/")]
 async fn hello() -> impl Responder {
@@ -17,9 +17,9 @@ async fn hello() -> impl Responder {
 
 #[derive(Deserialize)]
 pub struct Configuration {
-    pub target:String,
-    pub rate_limit:u64,
-    pub ip_ban:bool,
+    pub target: String,
+    pub rate_limit: u64,
+    pub ip_ban: bool,
 }
 
 #[actix_web::main]
@@ -30,18 +30,6 @@ async fn main() -> std::io::Result<()> {
         .parse::<u64>()
         .expect("Not a valid port");
 
-    let configurations={
-        let file=File::open("config.json").expect("config.json not found");
-
-        let mut file_contents=String::new();
-        
-        file.read_to_string(&mut file_contents).expect("Could not read config.json");
-        
-        let configurations:HashMap<String,Configuration>=serde_json::from_str(&file_contents).expect("Could not parse config.json");
-        configurations
-    };
-
-
 
     // Configure the rate limiter middleware
     let server = HttpServer::new(move || {
@@ -50,11 +38,9 @@ async fn main() -> std::io::Result<()> {
             .allow_any_header()
             .allow_any_method()
             .supports_credentials();
-        App::new().wrap(cors).service(hello).app_data(Data::new(configurations)).service(
+        App::new().wrap(cors).service(hello).service(
             // Setting up a scope for all keys-related routes
-            scope("/https")
-                .app_data(web::PayloadConfig::new(10240)) // 1kB limit
-                .configure(router::http_router::config), // Utilizing the configuration from controllers::keys
+            scope("/ws").configure(websockets::router::config), // Utilizing the configuration from controllers::keys
         )
     });
 
@@ -64,20 +50,17 @@ async fn main() -> std::io::Result<()> {
     if ssl_cert_file.len() == 0 || ssl_key_file.len() == 0 {
         return server.bind(format!("0.0.0.0:{}", port))?.run().await;
     }
-    
+
     let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
     builder
-        .set_private_key_file(ssl_key_file.as_ref(), SslFiletype::PEM)
+        .set_private_key_file(ssl_key_file, SslFiletype::PEM)
         .unwrap();
     builder
-        .set_certificate_chain_file(ssl_cert_file.as_ref())
+        .set_certificate_chain_file(ssl_cert_file)
         .unwrap();
 
     server
-        .bind_openssl(
-            format!("0.0.0.0:{}", port),
-            builder,
-        )?
+        .bind_openssl(format!("0.0.0.0:{}", port), builder)?
         .run()
         .await
 }
